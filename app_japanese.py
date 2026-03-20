@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="国語：完全攻略170問ドリル v2", layout="centered", page_icon="✍️")
+st.set_page_config(page_title="国語：完全攻略170問ドリル", layout="centered", page_icon="✍️")
 
 # === 【全170問】データベース（省略なし） ===
 KOKUGO_QUIZ_DATA = [
@@ -190,33 +190,24 @@ KOKUGO_QUIZ_DATA = [
 ]
 
 # --- 状態管理の初期化 ---
-if 'jp_score' not in st.session_state:
+if 'jp_current_id' not in st.session_state:
     st.session_state.update({
-        'jp_score': 0, 
-        'jp_total_count': 0, 
         'jp_current_id': -1,
         'jp_remaining_ids': list(range(len(KOKUGO_QUIZ_DATA))),
-        'jp_repeat_mode': False,  # 不正解時に同じ問題を出すフラグ
-        'jp_answered': False,     # 回答済みフラグ
-        'jp_first_attempt': True  # その問題の最初の試行かどうか
+        'jp_repeat_mode': False,
+        'jp_answered': False
     })
 
 def generate_question():
-    """新しい問題、または同じ問題を再生成する"""
     if st.session_state.jp_repeat_mode:
-        # 間違えたので同じIDを維持
         quiz_id = st.session_state.jp_current_id
-        st.session_state.jp_first_attempt = False # 再挑戦なのでカウント対象外
     else:
-        # 新しい問題
         if not st.session_state.jp_remaining_ids:
             st.session_state.jp_current_id = -99
             return
         quiz_id = random.choice(st.session_state.jp_remaining_ids)
         st.session_state.jp_current_id = quiz_id
-        st.session_state.jp_first_attempt = True # 新規問題なのでカウント対象
 
-    # 問題データのセット
     quiz_data = KOKUGO_QUIZ_DATA[quiz_id]
     options = list(quiz_data["d"]) + [quiz_data["a"]]
     random.shuffle(options)
@@ -230,51 +221,33 @@ def generate_question():
         'jp_is_correct': False
     })
 
-# 初回起動
 if st.session_state.jp_current_id == -1:
     generate_question()
 
 st.title("✍️ 国語：完全攻略170問ドリル")
-st.caption(f"全170問：間違えたら正解するまで再挑戦！")
+st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
 
-# 全問クリア画面
 if st.session_state.jp_current_id == -99:
     st.balloons()
     st.success("🎉 全170問クリア！素晴らしい達成です！")
-    st.metric("最終スコア (初見正解数)", f"{st.session_state.jp_score} / {len(KOKUGO_QUIZ_DATA)}")
     if st.button("最初から解き直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('jp_'): del st.session_state[key]
         st.rerun()
-
 else:
-    # 進行状況
-    remaining = len(st.session_state.jp_remaining_ids)
-    done = len(KOKUGO_QUIZ_DATA) - remaining
-    st.progress(done / len(KOKUGO_QUIZ_DATA))
-    
     st.info(f"分類: {st.session_state.jp_q_cat}")
-    st.subheader(f"{st.session_state.jp_q_txt}")
+    st.subheader(f"問題: {st.session_state.jp_q_txt}")
     
     if st.session_state.jp_repeat_mode and not st.session_state.jp_answered:
         st.warning("⚠️ 同じ問題に再挑戦！正解するまで進めません。")
 
-    # 回答フォーム
     with st.form(key='jp_answer_form'):
         user_choice = st.radio("正しい答えを選んでください", st.session_state.jp_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
 
         if submitted:
             if user_choice:
-                # 回答処理
                 st.session_state.jp_answered = True
-                
-                # スコア計算の精密ロジック
-                if st.session_state.jp_first_attempt:
-                    st.session_state.jp_total_count += 1
-                    if user_choice == st.session_state.jp_q_ans:
-                        st.session_state.jp_score += 1
-                
                 if user_choice == st.session_state.jp_q_ans:
                     st.session_state.jp_is_correct = True
                     st.session_state.jp_repeat_mode = False
@@ -283,12 +256,10 @@ else:
                 else:
                     st.session_state.jp_is_correct = False
                     st.session_state.jp_repeat_mode = True
-                
                 st.rerun()
             else:
                 st.warning("選択肢を選んでください。")
 
-    # 結果表示
     if st.session_state.jp_answered:
         if st.session_state.jp_is_correct:
             st.success(f"⭕ 正解！「{st.session_state.jp_q_ans}」")
@@ -300,11 +271,3 @@ else:
             if st.button("同じ問題に再挑戦"):
                 generate_question()
                 st.rerun()
-
-    # スコアの常時表示
-    st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**初見正解数:** {st.session_state.jp_score} / {st.session_state.jp_total_count}")
-    with col2:
-        st.write(f"**残り問題数:** {remaining}問 / 全170問")

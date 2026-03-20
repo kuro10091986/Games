@@ -5,11 +5,10 @@ import random
 st.set_page_config(page_title="小学校理科：一問一答マスター", layout="centered", page_icon="🔬")
 
 # === 【全50問以上】理科クイズ完全データベース ===
-# 新しく追加された50問を中心に、これまでの内容をすべて統合しました。
 SCIENCE_QUIZ_DATA = [
     # --- 植物のつくりとはたらき ---
     {"question": "種子の中のでんぷんが、発芽や成長に使われることを調べるために使う薬品は何ですか？", "answer": "ヨウ素液", "distractors": ["石灰水", "ベネジクト液", "塩酸"]},
-    {"question": "ヨウ素液はでんぷんに反応すると、何色に変化しますか？", "answer": "青むらさき色", "distractors": ["赤色", "緑色", "黄色"]},
+    {"question": "ヨウ素液はでんぷんに反応すると, 何色に変化しますか？", "answer": "青むらさき色", "distractors": ["赤色", "緑色", "黄色"]},
     {"question": "植物のからだの中の水が、水蒸気となって葉などから出ていくことを何といいますか？", "answer": "蒸散（じょうさん）", "distractors": ["光合成", "呼吸", "気化"]},
     {"question": "植物の成長に必要な3つの主な条件は、「水」「日光」とあと一つは何ですか？", "answer": "肥料", "distractors": ["土", "空気", "温度"]},
     {"question": "葉に日光が当たるとでんぷんができることを調べる際、日光を当てない葉を包むものは何ですか？", "answer": "アルミニウムはく", "distractors": ["ラップ", "黒い紙", "ビニール袋"]},
@@ -72,12 +71,13 @@ SCIENCE_QUIZ_DATA = [
     {"question": "コイルに鉄心を入れ、電流を流したときだけ磁石になるものを何といいますか？", "answer": "電磁石", "distractors": ["永久磁石", "コンパス", "発電機"]}
 ]
 
-# --- 以下、ゲームエンジン部分（前回の仕様を維持） ---
-if 's_score' not in st.session_state:
+# --- 状態管理の初期化 ---
+if 's_current_id' not in st.session_state:
     st.session_state.update({
-        's_score': 0, 's_total_count': 0, 's_current_id': -1,
+        's_current_id': -1,
         's_remaining_ids': list(range(len(SCIENCE_QUIZ_DATA))),
-        's_repeat_mode': False, 's_answered': False
+        's_repeat_mode': False,
+        's_answered': False
     })
 
 def generate_question():
@@ -93,40 +93,46 @@ def generate_question():
     quiz_data = SCIENCE_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
+    
     st.session_state.update({
-        's_question': quiz_data["question"], 's_answer': quiz_data["answer"],
-        's_options': options, 's_answered': False, 's_is_correct': False
+        's_question': quiz_data["question"],
+        's_answer': quiz_data["answer"],
+        's_options': options,
+        's_answered': False,
+        's_is_correct': False
     })
 
 if st.session_state.s_current_id == -1:
     generate_question()
 
 st.title("🔬 理科：一問一答マスター")
-st.caption(f"全{len(SCIENCE_QUIZ_DATA)}問：間違えたら正解するまで再挑戦！")
+st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
 
 if st.session_state.s_current_id == -99:
     st.balloons()
     st.success("✨ 全問正解！おめでとうございます！")
-    st.metric("最終スコア", f"{st.session_state.s_score} / {st.session_state.s_total_count}")
     if st.button("最初から解き直す"):
-        st.session_state.update({'s_score': 0, 's_total_count': 0, 's_remaining_ids': list(range(len(SCIENCE_QUIZ_DATA))), 's_current_id': -1, 's_repeat_mode': False})
+        for key in list(st.session_state.keys()):
+            if key.startswith('s_'): del st.session_state[key]
         st.rerun()
 else:
     st.subheader(f"問題: {st.session_state.s_question}")
+    
     if st.session_state.s_repeat_mode and not st.session_state.s_answered:
         st.warning("⚠️ 正解するまで次の問題へ進めません！")
 
-    with st.form(key='sci_form'):
+    with st.form(key='sci_answer_form'):
         user_choice = st.radio("答えを選択してください", st.session_state.s_options, index=None)
-        if st.form_submit_button("回答する"):
+        submitted = st.form_submit_button("回答する")
+
+        if submitted:
             if user_choice:
                 st.session_state.s_answered = True
-                st.session_state.s_total_count += 1
                 if user_choice == st.session_state.s_answer:
                     st.session_state.s_is_correct = True
+                    st.session_state.s_repeat_mode = False
                     if st.session_state.s_current_id in st.session_state.s_remaining_ids:
                         st.session_state.s_remaining_ids.remove(st.session_state.s_current_id)
-                    st.session_state.s_repeat_mode = False
                 else:
                     st.session_state.s_is_correct = False
                     st.session_state.s_repeat_mode = True
@@ -142,9 +148,6 @@ else:
                 st.rerun()
         else:
             st.error(f"❌ 残念！正解は「{st.session_state.s_answer}」でした。")
-            if st.button("もう一度挑戦"):
+            if st.button("同じ問題に再挑戦"):
                 generate_question()
                 st.rerun()
-
-    st.divider()
-    st.write(f"スコア: {st.session_state.s_score} / {st.session_state.s_total_count} (残り: {len(st.session_state.s_remaining_ids)}問)")

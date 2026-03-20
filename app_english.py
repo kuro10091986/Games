@@ -119,12 +119,13 @@ ENGLISH_QUIZ_DATA = [
     {"question": "「～へ行きましょう」と誘う時の言葉", "answer": "Let's (go to ...)", "distractors": ["Please", "Hello", "Welcome"]}
 ]
 
-# --- ゲームエンジン部分 ---
-if 'eng_score' not in st.session_state:
+# --- 状態管理の初期化 ---
+if 'eng_current_id' not in st.session_state:
     st.session_state.update({
-        'eng_score': 0, 'eng_total_count': 0, 'eng_current_id': -1,
+        'eng_current_id': -1,
         'eng_remaining_ids': list(range(len(ENGLISH_QUIZ_DATA))),
-        'eng_repeat_mode': False, 'eng_answered': False
+        'eng_repeat_mode': False,
+        'eng_answered': False
     })
 
 def generate_question():
@@ -140,56 +141,61 @@ def generate_question():
     quiz_data = ENGLISH_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
+    
     st.session_state.update({
-        'eng_question': quiz_data["question"], 'eng_answer': quiz_data["answer"],
-        'eng_options': options, 'eng_answered': False, 'eng_is_correct': False
+        'eng_q_txt': quiz_data["question"],
+        'eng_q_ans': quiz_data["answer"],
+        'eng_q_opts': options,
+        'eng_answered': False,
+        'eng_is_correct': False
     })
 
 if st.session_state.eng_current_id == -1:
     generate_question()
 
 st.title("🔤 英語：一問一答マスター")
-st.caption(f"全100問：スペルや表現を覚えよう！")
+st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
 
 if st.session_state.eng_current_id == -99:
     st.balloons()
     st.success("✨ Excellent! 100問すべてクリアしました！")
-    st.metric("最終スコア", f"{st.session_state.eng_score} / {st.session_state.eng_total_count}")
     if st.button("Try again (最初から挑戦)"):
-        st.session_state.update({'eng_score': 0, 'eng_total_count': 0, 'eng_remaining_ids': list(range(len(ENGLISH_QUIZ_DATA))), 'eng_current_id': -1, 'eng_repeat_mode': False})
+        for key in list(st.session_state.keys()):
+            if key.startswith('eng_'): del st.session_state[key]
         st.rerun()
 else:
-    st.subheader(f"問題: {st.session_state.eng_question}")
+    st.subheader(f"問題: {st.session_state.eng_q_txt}")
     
-    with st.form(key='eng_form'):
-        user_choice = st.radio("正しい英語を選んでください", st.session_state.eng_options, index=None)
-        if st.form_submit_button("回答する (Answer)"):
+    if st.session_state.eng_repeat_mode and not st.session_state.eng_answered:
+        st.warning("⚠️ 正解するまで次の問題へ進めません！")
+
+    with st.form(key='eng_answer_form'):
+        user_choice = st.radio("正しい英語を選んでください", st.session_state.eng_q_opts, index=None)
+        submitted = st.form_submit_button("回答する (Answer)")
+
+        if submitted:
             if user_choice:
                 st.session_state.eng_answered = True
-                st.session_state.eng_total_count += 1
-                if user_choice == st.session_state.eng_answer:
+                if user_choice == st.session_state.eng_q_ans:
                     st.session_state.eng_is_correct = True
+                    st.session_state.eng_repeat_mode = False
                     if st.session_state.eng_current_id in st.session_state.eng_remaining_ids:
                         st.session_state.eng_remaining_ids.remove(st.session_state.eng_current_id)
-                    st.session_state.eng_repeat_mode = False
                 else:
                     st.session_state.eng_is_correct = False
                     st.session_state.eng_repeat_mode = True
                 st.rerun()
             else:
-                st.warning("選択してください。")
+                st.warning("選択肢を選んでください。")
 
     if st.session_state.eng_answered:
         if st.session_state.eng_is_correct:
-            st.success(f"⭕ Correct! 「{st.session_state.eng_answer}」")
+            st.success(f"⭕ Correct! 「{st.session_state.eng_q_ans}」")
             if st.button("Next question (次の問題へ)"):
                 generate_question()
                 st.rerun()
         else:
-            st.error(f"❌ Oops! 正解は「{st.session_state.eng_answer}」でした。")
-            if st.button("Retry (正解するまでやり直し)"):
+            st.error(f"❌ Oops! 正解は「{st.session_state.eng_q_ans}」でした。")
+            if st.button("Retry (同じ問題に再挑戦)"):
                 generate_question()
                 st.rerun()
-
-    st.divider()
-    st.write(f"スコア: {st.session_state.eng_score} / {st.session_state.eng_total_count} (残り: {len(st.session_state.eng_remaining_ids)}問)")

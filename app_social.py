@@ -65,12 +65,13 @@ SOCIAL_QUIZ_DATA = [
     {"question": "開発と環境のバランスをとり、未来に豊かな生活を残せる社会を何といいますか？", "answer": "持続可能な社会（SDGs関連）", "distractors": ["高度経済成長", "情報化社会", "格差社会"]}
 ]
 
-# --- ゲームエンジン部分 ---
-if 'soc_score' not in st.session_state:
+# --- 状態管理の初期化 ---
+if 'soc_current_id' not in st.session_state:
     st.session_state.update({
-        'soc_score': 0, 'soc_total_count': 0, 'soc_current_id': -1,
+        'soc_current_id': -1,
         'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))),
-        'soc_repeat_mode': False, 'soc_answered': False
+        'soc_repeat_mode': False,
+        'soc_answered': False
     })
 
 def generate_question():
@@ -86,38 +87,46 @@ def generate_question():
     quiz_data = SOCIAL_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
+    
     st.session_state.update({
-        'soc_question': quiz_data["question"], 'soc_answer': quiz_data["answer"],
-        'soc_options': options, 'soc_answered': False, 'soc_is_correct': False
+        'soc_q_txt': quiz_data["question"],
+        'soc_q_ans': quiz_data["answer"],
+        'soc_q_opts': options,
+        'soc_answered': False,
+        'soc_is_correct': False
     })
 
 if st.session_state.soc_current_id == -1:
     generate_question()
 
 st.title("🗾 社会科：一問一答マスター")
-st.caption(f"地理・歴史・公民 全{len(SOCIAL_QUIZ_DATA)}問")
+st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
 
 if st.session_state.soc_current_id == -99:
     st.balloons()
     st.success("✨ 全問正解！素晴らしい知識です。")
-    st.metric("最終スコア", f"{st.session_state.soc_score} / {st.session_state.soc_total_count}")
     if st.button("もう一度挑戦する"):
-        st.session_state.update({'soc_score': 0, 'soc_total_count': 0, 'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))), 'soc_current_id': -1, 'soc_repeat_mode': False})
+        for key in list(st.session_state.keys()):
+            if key.startswith('soc_'): del st.session_state[key]
         st.rerun()
 else:
-    st.subheader(f"問題: {st.session_state.soc_question}")
+    st.subheader(f"問題: {st.session_state.soc_q_txt}")
     
-    with st.form(key='soc_form'):
-        user_choice = st.radio("答えを選んでください", st.session_state.soc_options, index=None)
-        if st.form_submit_button("回答する"):
+    if st.session_state.soc_repeat_mode and not st.session_state.soc_answered:
+        st.warning("⚠️ 正解するまで次の問題へ進めません！")
+
+    with st.form(key='soc_answer_form'):
+        user_choice = st.radio("答えを選んでください", st.session_state.soc_q_opts, index=None)
+        submitted = st.form_submit_button("回答する")
+
+        if submitted:
             if user_choice:
                 st.session_state.soc_answered = True
-                st.session_state.soc_total_count += 1
-                if user_choice == st.session_state.soc_answer:
+                if user_choice == st.session_state.soc_q_ans:
                     st.session_state.soc_is_correct = True
+                    st.session_state.soc_repeat_mode = False
                     if st.session_state.soc_current_id in st.session_state.soc_remaining_ids:
                         st.session_state.soc_remaining_ids.remove(st.session_state.soc_current_id)
-                    st.session_state.soc_repeat_mode = False
                 else:
                     st.session_state.soc_is_correct = False
                     st.session_state.soc_repeat_mode = True
@@ -127,15 +136,12 @@ else:
 
     if st.session_state.soc_answered:
         if st.session_state.soc_is_correct:
-            st.success(f"⭕ 正解！「{st.session_state.soc_answer}」")
+            st.success(f"⭕ 正解！「{st.session_state.soc_q_ans}」")
             if st.button("次の問題へ"):
                 generate_question()
                 st.rerun()
         else:
-            st.error(f"❌ 残念！正解は「{st.session_state.soc_answer}」でした。")
-            if st.button("もう一度挑戦（正解するまで進めません！）"):
+            st.error(f"❌ 残念！正解は「{st.session_state.soc_q_ans}」でした。")
+            if st.button("同じ問題に再挑戦"):
                 generate_question()
                 st.rerun()
-
-    st.divider()
-    st.write(f"スコア: {st.session_state.soc_score} / {st.session_state.soc_total_count} (残り: {len(st.session_state.soc_remaining_ids)}問)")
