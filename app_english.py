@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校英語：高度学習モード", layout="centered", page_icon="🔤")
+st.set_page_config(page_title="小学校英語：高度学習モード v2", layout="centered", page_icon="🔤")
 
 # === 【全100問】英語クイズ完全データベース ===
 ENGLISH_QUIZ_DATA = [
@@ -123,15 +123,15 @@ ENGLISH_QUIZ_DATA = [
 if 'eng_remaining_ids' not in st.session_state:
     st.session_state.update({
         'eng_remaining_ids': list(range(len(ENGLISH_QUIZ_DATA))),
-        'eng_wrong_pool': [],      # 復習用プール
+        'eng_wrong_pool': [],      
         'eng_step_counter': 0,     
         'eng_next_interval': random.randint(3, 5),
         'eng_current_id': -1,
-        'eng_answered': False
+        'eng_answered': False,
+        'eng_is_correct': False
     })
 
 def generate_next_question():
-    """高度な出題アルゴリズム（割り込み復習型）"""
     st.session_state.eng_step_counter += 1
     
     # 復習を出すタイミングかどうか判定
@@ -140,7 +140,6 @@ def generate_next_question():
 
     if is_review_time:
         quiz_id = random.choice(st.session_state.eng_wrong_pool)
-        # 次の復習までの距離を設定
         st.session_state.eng_next_interval = st.session_state.eng_step_counter + random.randint(3, 5)
     elif st.session_state.eng_remaining_ids:
         quiz_id = random.choice(st.session_state.eng_remaining_ids)
@@ -162,23 +161,23 @@ def generate_next_question():
         'eng_answered': False
     })
 
-# 初回起動
 if st.session_state.eng_current_id == -1:
     generate_next_question()
 
-st.title("🔤 英語：高度学習モード")
-st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
+st.title("🔤 英語：高度学習モード v2")
+st.caption("目の前の一問に集中！正解・不正解が回答後にしっかり表示されます。")
 
 if st.session_state.eng_current_id == -99:
     st.balloons()
     st.success("✨ Excellent! すべての英語課題をクリアしました！")
-    if st.button("Try again (最初から挑戦)"):
+    if st.button("最初からやり直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('eng_'): del st.session_state[key]
         st.rerun()
 else:
     st.subheader(f"問題: {st.session_state.eng_q_txt}")
     
+    # 回答用フォーム
     with st.form(key='eng_answer_form'):
         user_choice = st.radio("正しい英語を選んでください", st.session_state.eng_q_opts, index=None)
         submitted = st.form_submit_button("回答する (Answer)")
@@ -187,23 +186,28 @@ else:
             if user_choice:
                 st.session_state.eng_answered = True
                 
+                # 結果をセッションに保存してリラン
                 if user_choice == st.session_state.eng_q_ans:
-                    st.success(f"⭕ Correct! 「{st.session_state.eng_q_ans}」")
-                    # 正解したら各リストから完全に削除
+                    st.session_state.eng_is_correct = True
                     if st.session_state.eng_current_id in st.session_state.eng_remaining_ids:
                         st.session_state.eng_remaining_ids.remove(st.session_state.eng_current_id)
                     if st.session_state.eng_current_id in st.session_state.eng_wrong_pool:
                         st.session_state.eng_wrong_pool.remove(st.session_state.eng_current_id)
                 else:
-                    st.error(f"❌ Oops! 正解は「{st.session_state.eng_q_ans}」でした。")
-                    # 間違えたら復習プールに追加
+                    st.session_state.eng_is_correct = False
                     if st.session_state.eng_current_id not in st.session_state.eng_wrong_pool:
                         st.session_state.eng_wrong_pool.append(st.session_state.eng_current_id)
                 st.rerun()
             else:
                 st.warning("選択してください。")
 
+    # 回答後の判定表示（リラン後に表示）
     if st.session_state.eng_answered:
+        if st.session_state.eng_is_correct:
+            st.success(f"⭕ Correct! 「{st.session_state.eng_q_ans}」")
+        else:
+            st.error(f"❌ Oops! 正解は 「{st.session_state.eng_q_ans}」 でした。")
+        
         if st.button("Next question (次の問題へ)"):
             generate_next_question()
             st.rerun()
