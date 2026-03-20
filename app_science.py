@@ -2,13 +2,13 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校理科：一問一答マスター", layout="centered", page_icon="🔬")
+st.set_page_config(page_title="小学校理科：高度学習モード", layout="centered", page_icon="🔬")
 
 # === 【全50問以上】理科クイズ完全データベース ===
 SCIENCE_QUIZ_DATA = [
     # --- 植物のつくりとはたらき ---
     {"question": "種子の中のでんぷんが、発芽や成長に使われることを調べるために使う薬品は何ですか？", "answer": "ヨウ素液", "distractors": ["石灰水", "ベネジクト液", "塩酸"]},
-    {"question": "ヨウ素液はでんぷんに反応すると, 何色に変化しますか？", "answer": "青むらさき色", "distractors": ["赤色", "緑色", "黄色"]},
+    {"question": "ヨウ素液はでんぷんに反応すると、何色に変化しますか？", "answer": "青むらさき色", "distractors": ["赤色", "緑色", "黄色"]},
     {"question": "植物のからだの中の水が、水蒸気となって葉などから出ていくことを何といいますか？", "answer": "蒸散（じょうさん）", "distractors": ["光合成", "呼吸", "気化"]},
     {"question": "植物の成長に必要な3つの主な条件は、「水」「日光」とあと一つは何ですか？", "answer": "肥料", "distractors": ["土", "空気", "温度"]},
     {"question": "葉に日光が当たるとでんぷんができることを調べる際、日光を当てない葉を包むものは何ですか？", "answer": "アルミニウムはく", "distractors": ["ラップ", "黒い紙", "ビニール袋"]},
@@ -47,7 +47,7 @@ SCIENCE_QUIZ_DATA = [
 
     # --- 水のすがた・ものの燃え方 ---
     {"question": "水を熱して沸騰しているときに出てくる「あわ」の正体は何ですか？", "answer": "水蒸気", "distractors": ["空気", "酸素", "二酸化炭素"]},
-    {"question": "水が沸騰している間、温度はどのように変化しますか？", "answer": "変わらない（約100℃のまま）", "distractors": ["上がり続ける", "下がり続ける", "上下する"]},
+    {"question": "水が沸騰している間, 温度はどのように変化しますか？", "answer": "変わらない（約100℃のまま）", "distractors": ["上がり続ける", "下がり続ける", "上下する"]},
     {"question": "水蒸気が冷やされて、目に見える「湯気」になるのは、何体になったときですか？", "answer": "液体", "distractors": ["固体", "気体", "プラズマ"]},
     {"question": "空気をあたためると、体積はどうなりますか？", "answer": "大きくなる", "distractors": ["小さくなる", "変わらない", "なくなる"]},
     {"question": "ものが燃えるとき、空気中のどの気体が使われますか？", "answer": "酸素", "distractors": ["窒素", "二酸化炭素", "水素"]},
@@ -72,82 +72,86 @@ SCIENCE_QUIZ_DATA = [
 ]
 
 # --- 状態管理の初期化 ---
-if 's_current_id' not in st.session_state:
+if 's_remaining_ids' not in st.session_state:
     st.session_state.update({
-        's_current_id': -1,
         's_remaining_ids': list(range(len(SCIENCE_QUIZ_DATA))),
-        's_repeat_mode': False,
+        's_wrong_pool': [],      
+        's_step_counter': 0,     
+        's_next_interval': random.randint(3, 5),
+        's_current_id': -1,
         's_answered': False
     })
 
-def generate_question():
-    if st.session_state.s_repeat_mode:
-        quiz_id = st.session_state.s_current_id
-    else:
-        if not st.session_state.s_remaining_ids:
-            st.session_state.s_current_id = -99
-            return
+def generate_next_question():
+    """高度な出題アルゴリズム"""
+    st.session_state.s_step_counter += 1
+    
+    # 復習を出すタイミングかどうか判定
+    is_review_time = (st.session_state.s_wrong_pool and 
+                      st.session_state.s_step_counter >= st.session_state.s_next_interval)
+
+    if is_review_time:
+        quiz_id = random.choice(st.session_state.s_wrong_pool)
+        st.session_state.s_next_interval = st.session_state.s_step_counter + random.randint(3, 5)
+    elif st.session_state.s_remaining_ids:
         quiz_id = random.choice(st.session_state.s_remaining_ids)
-        st.session_state.s_current_id = quiz_id
+    elif st.session_state.s_wrong_pool:
+        quiz_id = random.choice(st.session_state.s_wrong_pool)
+    else:
+        st.session_state.s_current_id = -99
+        return
 
     quiz_data = SCIENCE_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
     
     st.session_state.update({
-        's_question': quiz_data["question"],
-        's_answer': quiz_data["answer"],
-        's_options': options,
-        's_answered': False,
-        's_is_correct': False
+        's_current_id': quiz_id,
+        's_q_txt': quiz_data["question"],
+        's_q_ans': quiz_data["answer"],
+        's_q_opts': options,
+        's_answered': False
     })
 
+# 初回起動
 if st.session_state.s_current_id == -1:
-    generate_question()
+    generate_next_question()
 
-st.title("🔬 理科：一問一答マスター")
-st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
+st.title("🔬 理科：高度学習モード")
+st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
 
 if st.session_state.s_current_id == -99:
     st.balloons()
-    st.success("✨ 全問正解！おめでとうございます！")
-    if st.button("最初から解き直す"):
+    st.success("🎉 すべての理科課題をクリアしました！完璧です！")
+    if st.button("最初からやり直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('s_'): del st.session_state[key]
         st.rerun()
 else:
-    st.subheader(f"問題: {st.session_state.s_question}")
+    st.subheader(f"問題: {st.session_state.s_q_txt}")
     
-    if st.session_state.s_repeat_mode and not st.session_state.s_answered:
-        st.warning("⚠️ 正解するまで次の問題へ進めません！")
-
     with st.form(key='sci_answer_form'):
-        user_choice = st.radio("答えを選択してください", st.session_state.s_options, index=None)
+        user_choice = st.radio("答えを選択してください", st.session_state.s_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
 
         if submitted:
             if user_choice:
                 st.session_state.s_answered = True
-                if user_choice == st.session_state.s_answer:
-                    st.session_state.s_is_correct = True
-                    st.session_state.s_repeat_mode = False
+                if user_choice == st.session_state.s_q_ans:
+                    st.success("⭕ 正解！")
                     if st.session_state.s_current_id in st.session_state.s_remaining_ids:
                         st.session_state.s_remaining_ids.remove(st.session_state.s_current_id)
+                    if st.session_state.s_current_id in st.session_state.s_wrong_pool:
+                        st.session_state.s_wrong_pool.remove(st.session_state.s_current_id)
                 else:
-                    st.session_state.s_is_correct = False
-                    st.session_state.s_repeat_mode = True
+                    st.error(f"❌ 残念！正解は「{st.session_state.s_q_ans}」でした。")
+                    if st.session_state.s_current_id not in st.session_state.s_wrong_pool:
+                        st.session_state.s_wrong_pool.append(st.session_state.s_current_id)
                 st.rerun()
             else:
                 st.warning("選択してください。")
 
     if st.session_state.s_answered:
-        if st.session_state.s_is_correct:
-            st.success(f"⭕ 正解！「{st.session_state.s_answer}」")
-            if st.button("次の問題へ"):
-                generate_question()
-                st.rerun()
-        else:
-            st.error(f"❌ 残念！正解は「{st.session_state.s_answer}」でした。")
-            if st.button("同じ問題に再挑戦"):
-                generate_question()
-                st.rerun()
+        if st.button("次の問題へ"):
+            generate_next_question()
+            st.rerun()

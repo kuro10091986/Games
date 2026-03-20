@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校社会：一問一答マスター", layout="centered", page_icon="🗾")
+st.set_page_config(page_title="小学校社会：高度学習モード", layout="centered", page_icon="🗾")
 
 # === 【全50問】社会科クイズデータベース ===
 SOCIAL_QUIZ_DATA = [
@@ -66,55 +66,69 @@ SOCIAL_QUIZ_DATA = [
 ]
 
 # --- 状態管理の初期化 ---
-if 'soc_current_id' not in st.session_state:
+if 'soc_remaining_ids' not in st.session_state:
     st.session_state.update({
+        'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))), # まだ正解していない問題
+        'soc_wrong_pool': [],      # 間違えた問題（復習用）
+        'soc_step_counter': 0,     # 出題数カウンター
+        'soc_next_interval': random.randint(3, 5), # 次に復習を出すタイミング
         'soc_current_id': -1,
-        'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))),
-        'soc_repeat_mode': False,
         'soc_answered': False
     })
 
-def generate_question():
-    if st.session_state.soc_repeat_mode:
-        quiz_id = st.session_state.soc_current_id
-    else:
-        if not st.session_state.soc_remaining_ids:
-            st.session_state.soc_current_id = -99
-            return
+def generate_next_question():
+    """高度な出題アルゴリズム"""
+    st.session_state.soc_step_counter += 1
+    
+    # 復習を出すタイミングかどうか判定
+    is_review_time = (st.session_state.soc_wrong_pool and 
+                      st.session_state.soc_step_counter >= st.session_state.soc_next_interval)
+
+    if is_review_time:
+        # 復習用プールからランダムに選択
+        quiz_id = random.choice(st.session_state.soc_wrong_pool)
+        # 次のインターバルを設定（現在から3〜5問後）
+        st.session_state.soc_next_interval = st.session_state.soc_step_counter + random.randint(3, 5)
+    elif st.session_state.soc_remaining_ids:
+        # 新規問題から選択
         quiz_id = random.choice(st.session_state.soc_remaining_ids)
-        st.session_state.soc_current_id = quiz_id
+    elif st.session_state.soc_wrong_pool:
+        # 新規が尽きたら、残った復習を出す
+        quiz_id = random.choice(st.session_state.soc_wrong_pool)
+    else:
+        # 全問終了
+        st.session_state.soc_current_id = -99
+        return
 
     quiz_data = SOCIAL_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
     
     st.session_state.update({
+        'soc_current_id': quiz_id,
         'soc_q_txt': quiz_data["question"],
         'soc_q_ans': quiz_data["answer"],
         'soc_q_opts': options,
-        'soc_answered': False,
-        'soc_is_correct': False
+        'soc_answered': False
     })
 
+# 初回起動
 if st.session_state.soc_current_id == -1:
-    generate_question()
+    generate_next_question()
 
-st.title("🗾 社会科：一問一答マスター")
-st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
+st.title("🗾 社会科：高度学習モード")
+st.caption("目の前の一問に集中！間違えた問題は、忘れた頃に再登場します。")
 
 if st.session_state.soc_current_id == -99:
     st.balloons()
-    st.success("✨ 全問正解！素晴らしい知識です。")
-    if st.button("もう一度挑戦する"):
+    st.success("🎉 すべての社会科課題をクリアしました！完璧です！")
+    if st.button("最初からやり直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('soc_'): del st.session_state[key]
         st.rerun()
 else:
     st.subheader(f"問題: {st.session_state.soc_q_txt}")
     
-    if st.session_state.soc_repeat_mode and not st.session_state.soc_answered:
-        st.warning("⚠️ 正解するまで次の問題へ進めません！")
-
     with st.form(key='soc_answer_form'):
         user_choice = st.radio("答えを選んでください", st.session_state.soc_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
@@ -122,26 +136,24 @@ else:
         if submitted:
             if user_choice:
                 st.session_state.soc_answered = True
+                
                 if user_choice == st.session_state.soc_q_ans:
-                    st.session_state.soc_is_correct = True
-                    st.session_state.soc_repeat_mode = False
+                    st.success("⭕ 正解！")
+                    # 正解したら「未正解リスト」からも「復習リスト」からも完全に削除
                     if st.session_state.soc_current_id in st.session_state.soc_remaining_ids:
                         st.session_state.soc_remaining_ids.remove(st.session_state.soc_current_id)
+                    if st.session_state.soc_current_id in st.session_state.soc_wrong_pool:
+                        st.session_state.soc_wrong_pool.remove(st.session_state.soc_current_id)
                 else:
-                    st.session_state.soc_is_correct = False
-                    st.session_state.soc_repeat_mode = True
+                    st.error(f"❌ 残念！正解は「{st.session_state.soc_q_ans}」でした。")
+                    # 間違えたら「復習リスト」にストック
+                    if st.session_state.soc_current_id not in st.session_state.soc_wrong_pool:
+                        st.session_state.soc_wrong_pool.append(st.session_state.soc_current_id)
                 st.rerun()
             else:
                 st.warning("選択肢を選んでください。")
 
     if st.session_state.soc_answered:
-        if st.session_state.soc_is_correct:
-            st.success(f"⭕ 正解！「{st.session_state.soc_q_ans}」")
-            if st.button("次の問題へ"):
-                generate_question()
-                st.rerun()
-        else:
-            st.error(f"❌ 残念！正解は「{st.session_state.soc_q_ans}」でした。")
-            if st.button("同じ問題に再挑戦"):
-                generate_question()
-                st.rerun()
+        if st.button("次の問題へ"):
+            generate_next_question()
+            st.rerun()

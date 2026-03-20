@@ -2,9 +2,9 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="国語：完全攻略170問ドリル", layout="centered", page_icon="✍️")
+st.set_page_config(page_title="国語：高度学習モード", layout="centered", page_icon="✍️")
 
-# === 【全170問】データベース（省略なし） ===
+# === 【全170問】国語クイズ完全データベース ===
 KOKUGO_QUIZ_DATA = [
     # --- 1. 漢字の読み書き (20問) ---
     {"cat": "読み書き", "q": "（往復）はがき [読み]", "a": "おうふく", "d": ["おうぶく", "ゆくかえり", "おうふう"]},
@@ -72,7 +72,7 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "対・類", "q": "「幸福」の対義語は？", "a": "不幸", "d": ["災難", "不運", "悲哀"]},
     {"cat": "対・類", "q": "「原因」の対義語は？", "a": "結果", "d": ["結末", "成果", "理由"]},
     {"cat": "対・類", "q": "「開始」の対義語は？", "a": "終了", "d": ["完了", "中止", "絶命"]},
-    {"cat": "対・類", "q": "「供給」の対義語は？", "a": "需要", "d": ["消費", "輸出", "要望"]},
+    {"cat": "対・類", "q": "「供給」の対義語は？", "a": "進呈", "d": ["需要", "輸出", "消費"]},
     {"cat": "対・類", "q": "「輸出」の対義語は？", "a": "輸入", "d": ["搬入", "貿易", "受入"]},
     {"cat": "対・類", "q": "「客観」の対義語は？", "a": "主観", "d": ["自己", "偏見", "個人"]},
     {"cat": "対・類", "q": "「理想」の対義語は？", "a": "現実", "d": ["事実", "実像", "虚像"]},
@@ -80,14 +80,14 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "対・類", "q": "「共通」の類義語は？", "a": "同じ", "d": ["全体", "平凡", "一律"]},
     {"cat": "対・類", "q": "「獲得」の類義語は？", "a": "入手（手に入れる）", "d": ["購入", "発見", "作成"]},
     {"cat": "対・類", "q": "「話す」の類義語は？", "a": "語る", "d": ["述べる", "歌う", "叫ぶ"]},
-    {"cat": "対・類", "q": "「短い」の類義語は？", "a": "短縮・簡潔", "d": ["小さい", "低い", "薄い"]},
+    {"cat": "対・類", "q": "「短い」の類義語は？", "a": "簡潔", "d": ["小さい", "低い", "薄い"]},
     {"cat": "対・類", "q": "「おどろく」の類義語は？", "a": "びっくりする", "d": ["あきれる", "いぶかる", "感心する"]},
     {"cat": "対・類", "q": "「考える」の類義語は？", "a": "思考する", "d": ["想像する", "記憶する", "確認する"]},
     {"cat": "対・類", "q": "「たずねる」の類義語は？", "a": "聞く", "d": ["調べる", "見る", "探す"]},
     {"cat": "対・類", "q": "「困難」の類義語は？", "a": "むずかしい", "d": ["きびしい", "まずい", "おそろしい"]},
     {"cat": "対・類", "q": "「最初」の類義語は？", "a": "はじめ", "d": ["一番", "元祖", "初診"]},
     {"cat": "対・類", "q": "「永遠」の類義語は？", "a": "とわ（永久）", "d": ["未来", "無限", "不変"]},
-    {"cat": "対・類", "q": "「静か」の類義語は？", "a": "おだやか・平穏", "d": ["無音", "孤独", "暗い"]},
+    {"cat": "対・類", "q": "「静か」の類義語は？", "a": "おだやか", "d": ["無音", "孤独", "暗い"]},
     {"cat": "対・類", "q": "「協力」の類義語は？", "a": "助け合い", "d": ["合流", "団結", "支援"]},
     {"cat": "対・類", "q": "「整理」の類義語は？", "a": "整頓", "d": ["清掃", "管理", "処分"]},
     {"cat": "対・類", "q": "「慎重」の類義語は？", "a": "注意深い", "d": ["確実", "正直", "臆病"]},
@@ -103,7 +103,7 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "構成", "q": "遠い国", "a": "遠国", "d": ["外国", "異国", "辺境"]},
     {"cat": "構成", "q": "新しい本", "a": "新本", "d": ["古本", "新刊", "原本"]},
     {"cat": "構成", "q": "白い雲", "a": "白雲", "d": ["暗雲", "積乱雲", "雨雲"]},
-    {"cat": "構成", "q": "広い原っぱ", "a": "原野・広野", "d": ["平野", "草原", "大地"]},
+    {"cat": "構成", "q": "広い原っぱ", "a": "広野", "d": ["平野", "草原", "大地"]},
     {"cat": "構成", "q": "長い時間", "a": "長時間", "d": ["短時間", "長期間", "半永久"]},
     {"cat": "構成", "q": "短い期間", "a": "短期", "d": ["長期", "一瞬", "刹那"]},
     {"cat": "構成", "q": "美しい女", "a": "美女", "d": ["淑女", "貴婦人", "乙女"]},
@@ -160,7 +160,7 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "敬語", "q": "相手を高める敬語は？", "a": "尊敬語", "d": ["謙譲語", "丁寧語", "美化語"]},
     {"cat": "敬語", "q": "自分を低める敬語は？", "a": "謙譲語", "d": ["尊敬語", "丁寧語", "謙遜語"]},
     {"cat": "敬語", "q": "「です・ます」を使う敬語は？", "a": "丁寧語", "d": ["尊敬語", "謙譲語", "美化語"]},
-    {"cat": "敬語", "q": "尊敬語：「行く」", "a": "いらっしゃる・おいでになる", "d": ["伺う", "参る", "行く"]},
+    {"cat": "敬語", "q": "尊敬語：「行く」", "a": "いらっしゃる", "d": ["伺う", "参る", "行く"]},
     {"cat": "敬語", "q": "謙譲語：「行く」", "a": "伺う・参る", "d": ["いらっしゃる", "おいでになる", "行かれる"]},
     {"cat": "敬語", "q": "尊敬語：「言う」", "a": "おっしゃる", "d": ["申す", "申し上げる", "言われる"]},
     {"cat": "敬語", "q": "謙譲語：「言う」", "a": "申す・申し上げる", "d": ["おっしゃる", "言われる", "聞く"]},
@@ -175,7 +175,7 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "敬語", "q": "尊敬語：「くれる」", "a": "くださる", "d": ["差し上げる", "あげる", "くれる"]},
     {"cat": "敬語", "q": "謙譲語：「あげる」", "a": "差し上げる", "d": ["くださる", "あげる", "献上する"]},
     {"cat": "敬語", "q": "丁寧語：「だ」", "a": "です・でございます", "d": ["である", "ですね", "だ"]},
-    {"cat": "敬語", "q": "尊敬語：「聞く」", "a": "お聞きになる・お耳に入る", "d": ["伺う", "拝聴する", "聞かれる"]},
+    {"cat": "敬語", "q": "尊敬語：「聞く」", "a": "お聞きになる", "d": ["伺う", "拝聴する", "聞かれる"]},
     {"cat": "敬語", "q": "謙譲語：「聞く」", "a": "伺う・拝聴する", "d": ["お聞きになる", "拝見する", "お耳に入れる"]},
     {"cat": "敬語", "q": "尊敬語：「座る」", "a": "お掛けになる", "d": ["お座りいたす", "着席なさる", "座られる"]},
     {"cat": "敬語", "q": "謙譲語：「座る」", "a": "お座りいたす", "d": ["お掛けになる", "座らせていただく", "座る"]},
@@ -190,57 +190,65 @@ KOKUGO_QUIZ_DATA = [
 ]
 
 # --- 状態管理の初期化 ---
-if 'jp_current_id' not in st.session_state:
+if 'jp_remaining_ids' not in st.session_state:
     st.session_state.update({
-        'jp_current_id': -1,
         'jp_remaining_ids': list(range(len(KOKUGO_QUIZ_DATA))),
-        'jp_repeat_mode': False,
+        'jp_wrong_pool': [],      
+        'jp_step_counter': 0,     
+        'jp_next_interval': random.randint(3, 5),
+        'jp_current_id': -1,
         'jp_answered': False
     })
 
-def generate_question():
-    if st.session_state.jp_repeat_mode:
-        quiz_id = st.session_state.jp_current_id
-    else:
-        if not st.session_state.jp_remaining_ids:
-            st.session_state.jp_current_id = -99
-            return
+def generate_next_question():
+    """高度な出題アルゴリズム（割り込み復習型）"""
+    st.session_state.jp_step_counter += 1
+    
+    # 復習を出すタイミングかどうか判定
+    is_review_time = (st.session_state.jp_wrong_pool and 
+                      st.session_state.jp_step_counter >= st.session_state.jp_next_interval)
+
+    if is_review_time:
+        quiz_id = random.choice(st.session_state.jp_wrong_pool)
+        st.session_state.jp_next_interval = st.session_state.jp_step_counter + random.randint(3, 5)
+    elif st.session_state.jp_remaining_ids:
         quiz_id = random.choice(st.session_state.jp_remaining_ids)
-        st.session_state.jp_current_id = quiz_id
+    elif st.session_state.jp_wrong_pool:
+        quiz_id = random.choice(st.session_state.jp_wrong_pool)
+    else:
+        st.session_state.jp_current_id = -99
+        return
 
     quiz_data = KOKUGO_QUIZ_DATA[quiz_id]
     options = list(quiz_data["d"]) + [quiz_data["a"]]
     random.shuffle(options)
     
     st.session_state.update({
+        'jp_current_id': quiz_id,
         'jp_q_txt': quiz_data["q"],
         'jp_q_ans': quiz_data["a"],
         'jp_q_opts': options,
         'jp_q_cat': quiz_data["cat"],
-        'jp_answered': False,
-        'jp_is_correct': False
+        'jp_answered': False
     })
 
 if st.session_state.jp_current_id == -1:
-    generate_question()
+    generate_next_question()
 
-st.title("✍️ 国語：完全攻略170問ドリル")
-st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
+st.title("✍️ 国語：高度学習モード")
+st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
 
 if st.session_state.jp_current_id == -99:
     st.balloons()
-    st.success("🎉 全170問クリア！素晴らしい達成です！")
+    st.success("🎉 ブラボー！国語170問の山を完全に攻略しました！")
     if st.button("最初から解き直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('jp_'): del st.session_state[key]
         st.rerun()
 else:
     st.info(f"分類: {st.session_state.jp_q_cat}")
-    st.subheader(f"問題: {st.session_state.jp_q_txt}")
+    st.subheader(f"{st.session_state.jp_q_txt}")
     
-    if st.session_state.jp_repeat_mode and not st.session_state.jp_answered:
-        st.warning("⚠️ 同じ問題に再挑戦！正解するまで進めません。")
-
     with st.form(key='jp_answer_form'):
         user_choice = st.radio("正しい答えを選んでください", st.session_state.jp_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
@@ -249,25 +257,20 @@ else:
             if user_choice:
                 st.session_state.jp_answered = True
                 if user_choice == st.session_state.jp_q_ans:
-                    st.session_state.jp_is_correct = True
-                    st.session_state.jp_repeat_mode = False
+                    st.success("⭕ 正解！")
                     if st.session_state.jp_current_id in st.session_state.jp_remaining_ids:
                         st.session_state.jp_remaining_ids.remove(st.session_state.jp_current_id)
+                    if st.session_state.jp_current_id in st.session_state.jp_wrong_pool:
+                        st.session_state.jp_wrong_pool.remove(st.session_state.jp_current_id)
                 else:
-                    st.session_state.jp_is_correct = False
-                    st.session_state.jp_repeat_mode = True
+                    st.error(f"❌ 残念！正解は「{st.session_state.jp_q_ans}」でした。")
+                    if st.session_state.jp_current_id not in st.session_state.jp_wrong_pool:
+                        st.session_state.jp_wrong_pool.append(st.session_state.jp_current_id)
                 st.rerun()
             else:
                 st.warning("選択肢を選んでください。")
 
     if st.session_state.jp_answered:
-        if st.session_state.jp_is_correct:
-            st.success(f"⭕ 正解！「{st.session_state.jp_q_ans}」")
-            if st.button("次の問題へ"):
-                generate_question()
-                st.rerun()
-        else:
-            st.error(f"❌ 残念！正解は「{st.session_state.jp_q_ans}」でした。")
-            if st.button("同じ問題に再挑戦"):
-                generate_question()
-                st.rerun()
+        if st.button("次の問題へ"):
+            generate_next_question()
+            st.rerun()

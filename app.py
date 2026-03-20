@@ -2,10 +2,9 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校英単語500 攻略クイズ", layout="centered", page_icon="🎓")
+st.set_page_config(page_title="小学校英単語：高度学習モード", layout="centered", page_icon="🎓")
 
-# === 【完全版】画像から抽出した全500語のデータベース ===
-# ここにすべての単語が含まれています。
+# === 【完全版】全500語データベース ===
 WORD_DATA = {
     "1.動作": [
         ("会う", "meet"), ("洗う", "wash"), ("歩く", "walk"), ("行く", "go"), ("歌う", "sing"),
@@ -134,115 +133,113 @@ WORD_DATA = {
     ]
 }
 
-# === 共通データ処理 ===
-# 全単語をリスト化 (出題用)
+# --- データの前処理 ---
 ALL_PAIRS = []
-ALL_JP_WORDS = []
-ALL_EN_WORDS = []
-for category, words in WORD_DATA.items():
+ALL_JP = []
+ALL_EN = []
+for cat, words in WORD_DATA.items():
     for jp, en in words:
-        ALL_PAIRS.append((jp, en, category))
-        ALL_JP_WORDS.append(jp)
-        ALL_EN_WORDS.append(en)
+        ALL_PAIRS.append({"jp": jp, "en": en, "cat": cat})
+        ALL_JP.append(jp)
+        ALL_EN.append(en)
 
-# === クイズロジック ===
-def get_next_question():
-    """全単語の中からランダムに問題と選択肢を生成する"""
-    # 全データからランダムに1つのペアを選択
-    target = random.choice(ALL_PAIRS)
+# --- 状態管理の初期化 ---
+if 'vocab_remaining_ids' not in st.session_state:
+    st.session_state.update({
+        'vocab_remaining_ids': list(range(len(ALL_PAIRS))), # 未正解リスト
+        'vocab_wrong_pool': [],      # 間違えた問題の再出題プール
+        'vocab_step_counter': 0,     # 出題数
+        'vocab_next_review': random.randint(3, 5), # 次に復習を入れるタイミング
+        'vocab_current_id': -1,
+        'vocab_answered': False
+    })
+
+def generate_next_vocab():
+    """高度な出題ロジック：新規と復習を混ぜる"""
+    st.session_state.vocab_step_counter += 1
+    
+    # 復習を出すタイミングか？
+    is_review_time = (st.session_state.vocab_wrong_pool and 
+                      st.session_state.vocab_step_counter >= st.session_state.vocab_next_review)
+
+    if is_review_time:
+        quiz_id = random.choice(st.session_state.vocab_wrong_pool)
+        # 次の復習間隔を設定
+        st.session_state.vocab_next_review = st.session_state.vocab_step_counter + random.randint(3, 5)
+    elif st.session_state.vocab_remaining_ids:
+        quiz_id = random.choice(st.session_state.vocab_remaining_ids)
+    elif st.session_state.vocab_wrong_pool:
+        quiz_id = random.choice(st.session_state.vocab_wrong_pool)
+    else:
+        st.session_state.vocab_current_id = -99
+        return
+
+    data = ALL_PAIRS[quiz_id]
     mode = random.randint(0, 1) # 0: JP->EN, 1: EN->JP
     
-    category = target[2]
-    
     if mode == 0:
-        question = target[0] # 日本語
-        answer = target[1]   # 英語（正解）
-        # 選択肢用の英語リスト (正解を除外)
-        distractors_pool = [w for w in ALL_EN_WORDS if w != answer]
+        q, a = data["jp"], data["en"]
+        distractors = [w for w in ALL_EN if w != a]
     else:
-        question = target[1] # 英語
-        answer = target[0]   # 日本語（正解）
-        # 選択肢用の日本語リスト (正解を除外)
-        distractors_pool = [w for w in ALL_JP_WORDS if w != answer]
+        q, a = data["en"], data["jp"]
+        distractors = [w for w in ALL_JP if w != a]
         
-    # 不正解選択肢を3つランダムに抽出
-    options = random.sample(distractors_pool, 3)
-    options.append(answer) # 正解を追加
-    random.shuffle(options) # シャッフル
+    options = random.sample(distractors, 3) + [a]
+    random.shuffle(options)
     
-    return {
-        "question": question,
-        "answer": answer,
-        "options": options,
-        "category": category,
-        "mode": mode
-    }
+    st.session_state.update({
+        'vocab_current_id': quiz_id,
+        'vocab_q_txt': q,
+        'vocab_q_ans': a,
+        'vocab_q_opts': options,
+        'vocab_q_cat': data["cat"],
+        'vocab_answered': False,
+        'vocab_mode': mode
+    })
 
-# === ゲームの状態管理 (セッションステート) ===
-# 最初の問題の初期化
-if 'score' not in st.session_state:
-    st.session_state.score = 0
-    st.session_state.total_count = 0
-    st.session_state.answered = True # 最初は「回答済み」状態にして、問題生成を促す
+# 初回起動
+if st.session_state.vocab_current_id == -1:
+    generate_next_vocab()
 
-# === 画面更新用の関数 ===
-def rerun_with_new_question():
-    """新しい問題を生成して画面を再描画する"""
-    st.session_state.game_state = get_next_question()
-    st.session_state.answered = False
-    st.session_state.current_choice = None # ラジオボタンのリセット用
-    # st.rerun() # 自動的にリランされない場合のみコメント解除
+st.title("🎓 英単語：高度学習モード")
+st.caption("英単語マスターへの道！間違えた単語は忘れた頃に再登場します。")
 
-# === メインUI ===
-st.title("🎓 小学生英単語500 攻略クイズ")
-st.markdown("---")
-
-# 最初の問題生成
-if st.session_state.answered and 'game_state' not in st.session_state:
-    rerun_with_new_question()
-
-# 問題表示エリア
-if 'game_state' in st.session_state:
-    state = st.session_state.game_state
+if st.session_state.vocab_current_id == -99:
+    st.balloons()
+    st.success("🎉 おめでとうございます！すべてを完全攻略しました！")
+    if st.button("最初からやり直す"):
+        for key in list(st.session_state.keys()):
+            if key.startswith('vocab_'): del st.session_state[key]
+        st.rerun()
+else:
+    st.info(f"カテゴリー: {st.session_state.vocab_q_cat}")
+    prompt = "は英語で何？" if st.session_state.vocab_mode == 0 else "の意味は？"
+    st.subheader(f"「{st.session_state.vocab_q_txt}」{prompt}")
     
-    # カテゴリ情報
-    st.caption(f"カテゴリー: {state['category']}")
-    
-    # 問題テキスト
-    if state['mode'] == 0:
-        st.subheader(f"「**{state['question']}**」は英語で何と言う？")
-    else:
-        st.subheader(f"「**{state['question']}**」の意味は？")
-        
-    # 選択肢 (フォームを使用して送信タイミングを制御)
-    with st.form(key='answer_form', clear_on_submit=False):
-        user_choice = st.radio("答えを選んでください", state['options'], key="answer_radio", index=None)
-        submit_button = st.form_submit_button(label='回答する')
+    with st.form(key='vocab_form'):
+        user_choice = st.radio("答えを選んでください", st.session_state.vocab_q_opts, index=None)
+        submitted = st.form_submit_button("回答する")
 
-        if submit_button:
-            if user_choice is None:
-                st.warning("選択肢を選んでから回答してください。")
-            elif not st.session_state.answered:
-                # 回答処理
-                st.session_state.answered = True
-                st.session_state.total_count += 1
-                if user_choice == state['answer']:
-                    st.session_state.score += 1
-                    st.success(f"✨ 正解！ 「{state['answer']}」でした。")
+        if submitted:
+            if user_choice:
+                st.session_state.vocab_answered = True
+                if user_choice == st.session_state.vocab_q_ans:
+                    st.success("✨ 正解！")
+                    # 正解したら全リストから削除
+                    if st.session_state.vocab_current_id in st.session_state.vocab_remaining_ids:
+                        st.session_state.vocab_remaining_ids.remove(st.session_state.vocab_current_id)
+                    if st.session_state.vocab_current_id in st.session_state.vocab_wrong_pool:
+                        st.session_state.vocab_wrong_pool.remove(st.session_state.vocab_current_id)
                 else:
-                    st.error(f"❌ 残念。正解は「{state['answer']}」でした。")
-                
-                # 自動的にスコアを表示するためにリラン (最新のanswered状態を反映)
+                    st.error(f"❌ 残念。正解は「{st.session_state.vocab_q_ans}」でした。")
+                    # 間違えたら復習プールへ（重複させない）
+                    if st.session_state.vocab_current_id not in st.session_state.vocab_wrong_pool:
+                        st.session_state.vocab_wrong_pool.append(st.session_state.vocab_current_id)
                 st.rerun()
+            else:
+                st.warning("選択肢を選んでください。")
 
-    # スコアと次の問題ボタン
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if st.session_state.total_count > 0:
-            st.write(f"**現在のスコア:** {st.session_state.score} / {st.session_state.total_count}")
-    
-    with col2:
-        if st.session_state.answered:
-            if st.button("次の問題へ", key="next_question"):
-                rerun_with_new_question()
-                st.rerun() # 画面をリセット
+    if st.session_state.vocab_answered:
+        if st.button("次の問題へ"):
+            generate_next_vocab()
+            st.rerun()

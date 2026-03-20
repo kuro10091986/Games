@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校英語：一問一答マスター", layout="centered", page_icon="🔤")
+st.set_page_config(page_title="小学校英語：高度学習モード", layout="centered", page_icon="🔤")
 
 # === 【全100問】英語クイズ完全データベース ===
 ENGLISH_QUIZ_DATA = [
@@ -120,45 +120,58 @@ ENGLISH_QUIZ_DATA = [
 ]
 
 # --- 状態管理の初期化 ---
-if 'eng_current_id' not in st.session_state:
+if 'eng_remaining_ids' not in st.session_state:
     st.session_state.update({
-        'eng_current_id': -1,
         'eng_remaining_ids': list(range(len(ENGLISH_QUIZ_DATA))),
-        'eng_repeat_mode': False,
+        'eng_wrong_pool': [],      # 復習用プール
+        'eng_step_counter': 0,     
+        'eng_next_interval': random.randint(3, 5),
+        'eng_current_id': -1,
         'eng_answered': False
     })
 
-def generate_question():
-    if st.session_state.eng_repeat_mode:
-        quiz_id = st.session_state.eng_current_id
-    else:
-        if not st.session_state.eng_remaining_ids:
-            st.session_state.eng_current_id = -99
-            return
+def generate_next_question():
+    """高度な出題アルゴリズム（割り込み復習型）"""
+    st.session_state.eng_step_counter += 1
+    
+    # 復習を出すタイミングかどうか判定
+    is_review_time = (st.session_state.eng_wrong_pool and 
+                      st.session_state.eng_step_counter >= st.session_state.eng_next_interval)
+
+    if is_review_time:
+        quiz_id = random.choice(st.session_state.eng_wrong_pool)
+        # 次の復習までの距離を設定
+        st.session_state.eng_next_interval = st.session_state.eng_step_counter + random.randint(3, 5)
+    elif st.session_state.eng_remaining_ids:
         quiz_id = random.choice(st.session_state.eng_remaining_ids)
-        st.session_state.eng_current_id = quiz_id
+    elif st.session_state.eng_wrong_pool:
+        quiz_id = random.choice(st.session_state.eng_wrong_pool)
+    else:
+        st.session_state.eng_current_id = -99
+        return
 
     quiz_data = ENGLISH_QUIZ_DATA[quiz_id]
     options = list(quiz_data["distractors"]) + [quiz_data["answer"]]
     random.shuffle(options)
     
     st.session_state.update({
+        'eng_current_id': quiz_id,
         'eng_q_txt': quiz_data["question"],
         'eng_q_ans': quiz_data["answer"],
         'eng_q_opts': options,
-        'eng_answered': False,
-        'eng_is_correct': False
+        'eng_answered': False
     })
 
+# 初回起動
 if st.session_state.eng_current_id == -1:
-    generate_question()
+    generate_next_question()
 
-st.title("🔤 英語：一問一答マスター")
-st.caption("目の前の一問に集中！正解するまで次の問題へ進めません。")
+st.title("🔤 英語：高度学習モード")
+st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
 
 if st.session_state.eng_current_id == -99:
     st.balloons()
-    st.success("✨ Excellent! 100問すべてクリアしました！")
+    st.success("✨ Excellent! すべての英語課題をクリアしました！")
     if st.button("Try again (最初から挑戦)"):
         for key in list(st.session_state.keys()):
             if key.startswith('eng_'): del st.session_state[key]
@@ -166,9 +179,6 @@ if st.session_state.eng_current_id == -99:
 else:
     st.subheader(f"問題: {st.session_state.eng_q_txt}")
     
-    if st.session_state.eng_repeat_mode and not st.session_state.eng_answered:
-        st.warning("⚠️ 正解するまで次の問題へ進めません！")
-
     with st.form(key='eng_answer_form'):
         user_choice = st.radio("正しい英語を選んでください", st.session_state.eng_q_opts, index=None)
         submitted = st.form_submit_button("回答する (Answer)")
@@ -176,26 +186,24 @@ else:
         if submitted:
             if user_choice:
                 st.session_state.eng_answered = True
+                
                 if user_choice == st.session_state.eng_q_ans:
-                    st.session_state.eng_is_correct = True
-                    st.session_state.eng_repeat_mode = False
+                    st.success(f"⭕ Correct! 「{st.session_state.eng_q_ans}」")
+                    # 正解したら各リストから完全に削除
                     if st.session_state.eng_current_id in st.session_state.eng_remaining_ids:
                         st.session_state.eng_remaining_ids.remove(st.session_state.eng_current_id)
+                    if st.session_state.eng_current_id in st.session_state.eng_wrong_pool:
+                        st.session_state.eng_wrong_pool.remove(st.session_state.eng_current_id)
                 else:
-                    st.session_state.eng_is_correct = False
-                    st.session_state.eng_repeat_mode = True
+                    st.error(f"❌ Oops! 正解は「{st.session_state.eng_q_ans}」でした。")
+                    # 間違えたら復習プールに追加
+                    if st.session_state.eng_current_id not in st.session_state.eng_wrong_pool:
+                        st.session_state.eng_wrong_pool.append(st.session_state.eng_current_id)
                 st.rerun()
             else:
-                st.warning("選択肢を選んでください。")
+                st.warning("選択してください。")
 
     if st.session_state.eng_answered:
-        if st.session_state.eng_is_correct:
-            st.success(f"⭕ Correct! 「{st.session_state.eng_q_ans}」")
-            if st.button("Next question (次の問題へ)"):
-                generate_question()
-                st.rerun()
-        else:
-            st.error(f"❌ Oops! 正解は「{st.session_state.eng_q_ans}」でした。")
-            if st.button("Retry (同じ問題に再挑戦)"):
-                generate_question()
-                st.rerun()
+        if st.button("Next question (次の問題へ)"):
+            generate_next_question()
+            st.rerun()
