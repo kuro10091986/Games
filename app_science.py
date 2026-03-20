@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校理科：高度学習モード", layout="centered", page_icon="🔬")
+st.set_page_config(page_title="小学校理科：高度学習モード v2", layout="centered", page_icon="🔬")
 
 # === 【全50問以上】理科クイズ完全データベース ===
 SCIENCE_QUIZ_DATA = [
@@ -47,7 +47,7 @@ SCIENCE_QUIZ_DATA = [
 
     # --- 水のすがた・ものの燃え方 ---
     {"question": "水を熱して沸騰しているときに出てくる「あわ」の正体は何ですか？", "answer": "水蒸気", "distractors": ["空気", "酸素", "二酸化炭素"]},
-    {"question": "水が沸騰している間, 温度はどのように変化しますか？", "answer": "変わらない（約100℃のまま）", "distractors": ["上がり続ける", "下がり続ける", "上下する"]},
+    {"question": "水が沸騰している間、温度はどのように変化しますか？", "answer": "変わらない（約100℃のまま）", "distractors": ["上がり続ける", "下がり続ける", "上下する"]},
     {"question": "水蒸気が冷やされて、目に見える「湯気」になるのは、何体になったときですか？", "answer": "液体", "distractors": ["固体", "気体", "プラズマ"]},
     {"question": "空気をあたためると、体積はどうなりますか？", "answer": "大きくなる", "distractors": ["小さくなる", "変わらない", "なくなる"]},
     {"question": "ものが燃えるとき、空気中のどの気体が使われますか？", "answer": "酸素", "distractors": ["窒素", "二酸化炭素", "水素"]},
@@ -79,14 +79,14 @@ if 's_remaining_ids' not in st.session_state:
         's_step_counter': 0,     
         's_next_interval': random.randint(3, 5),
         's_current_id': -1,
-        's_answered': False
+        's_answered': False,
+        's_is_correct': False
     })
 
 def generate_next_question():
-    """高度な出題アルゴリズム"""
     st.session_state.s_step_counter += 1
     
-    # 復習を出すタイミングかどうか判定
+    # 復習を出すタイミング判定
     is_review_time = (st.session_state.s_wrong_pool and 
                       st.session_state.s_step_counter >= st.session_state.s_next_interval)
 
@@ -113,11 +113,10 @@ def generate_next_question():
         's_answered': False
     })
 
-# 初回起動
 if st.session_state.s_current_id == -1:
     generate_next_question()
 
-st.title("🔬 理科：高度学習モード")
+st.title("🔬 理科：高度学習モード v2")
 st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
 
 if st.session_state.s_current_id == -99:
@@ -130,6 +129,7 @@ if st.session_state.s_current_id == -99:
 else:
     st.subheader(f"問題: {st.session_state.s_q_txt}")
     
+    # 回答用フォーム
     with st.form(key='sci_answer_form'):
         user_choice = st.radio("答えを選択してください", st.session_state.s_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
@@ -137,21 +137,28 @@ else:
         if submitted:
             if user_choice:
                 st.session_state.s_answered = True
+                
                 if user_choice == st.session_state.s_q_ans:
-                    st.success("⭕ 正解！")
+                    st.session_state.s_is_correct = True
                     if st.session_state.s_current_id in st.session_state.s_remaining_ids:
                         st.session_state.s_remaining_ids.remove(st.session_state.s_current_id)
                     if st.session_state.s_current_id in st.session_state.s_wrong_pool:
                         st.session_state.s_wrong_pool.remove(st.session_state.s_current_id)
                 else:
-                    st.error(f"❌ 残念！正解は「{st.session_state.s_q_ans}」でした。")
+                    st.session_state.s_is_correct = False
                     if st.session_state.s_current_id not in st.session_state.s_wrong_pool:
                         st.session_state.s_wrong_pool.append(st.session_state.s_current_id)
                 st.rerun()
             else:
                 st.warning("選択してください。")
 
+    # 回答後の判定表示（リラン後に表示）
     if st.session_state.s_answered:
+        if st.session_state.s_is_correct:
+            st.success(f"⭕ 正解！ 「{st.session_state.s_q_ans}」")
+        else:
+            st.error(f"❌ 残念！ 正解は 「{st.session_state.s_q_ans}」 でした。")
+        
         if st.button("次の問題へ"):
             generate_next_question()
             st.rerun()

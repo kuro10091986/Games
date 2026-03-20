@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="国語：高度学習モード", layout="centered", page_icon="✍️")
+st.set_page_config(page_title="国語：高度学習モード v2", layout="centered", page_icon="✍️")
 
 # === 【全170問】国語クイズ完全データベース ===
 KOKUGO_QUIZ_DATA = [
@@ -72,7 +72,7 @@ KOKUGO_QUIZ_DATA = [
     {"cat": "対・類", "q": "「幸福」の対義語は？", "a": "不幸", "d": ["災難", "不運", "悲哀"]},
     {"cat": "対・類", "q": "「原因」の対義語は？", "a": "結果", "d": ["結末", "成果", "理由"]},
     {"cat": "対・類", "q": "「開始」の対義語は？", "a": "終了", "d": ["完了", "中止", "絶命"]},
-    {"cat": "対・類", "q": "「供給」の対義語は？", "a": "進呈", "d": ["需要", "輸出", "消費"]},
+    {"cat": "対・類", "q": "「供給」の対義語は？", "a": "需要", "d": ["進呈", "輸出", "消費"]},
     {"cat": "対・類", "q": "「輸出」の対義語は？", "a": "輸入", "d": ["搬入", "貿易", "受入"]},
     {"cat": "対・類", "q": "「客観」の対義語は？", "a": "主観", "d": ["自己", "偏見", "個人"]},
     {"cat": "対・類", "q": "「理想」の対義語は？", "a": "現実", "d": ["事実", "実像", "虚像"]},
@@ -197,14 +197,14 @@ if 'jp_remaining_ids' not in st.session_state:
         'jp_step_counter': 0,     
         'jp_next_interval': random.randint(3, 5),
         'jp_current_id': -1,
-        'jp_answered': False
+        'jp_answered': False,
+        'jp_is_correct': False
     })
 
 def generate_next_question():
-    """高度な出題アルゴリズム（割り込み復習型）"""
     st.session_state.jp_step_counter += 1
     
-    # 復習を出すタイミングかどうか判定
+    # 復習のタイミング判定
     is_review_time = (st.session_state.jp_wrong_pool and 
                       st.session_state.jp_step_counter >= st.session_state.jp_next_interval)
 
@@ -235,42 +235,50 @@ def generate_next_question():
 if st.session_state.jp_current_id == -1:
     generate_next_question()
 
-st.title("✍️ 国語：高度学習モード")
+st.title("✍️ 国語：高度学習モード v2")
 st.caption("目の前の一問に集中！間違えた問題は忘れた頃に再登場します。")
 
 if st.session_state.jp_current_id == -99:
     st.balloons()
-    st.success("🎉 ブラボー！国語170問の山を完全に攻略しました！")
-    if st.button("最初から解き直す"):
+    st.success("🎉 国語170問の山を完全に攻略しました！ブラボー！")
+    if st.button("最初からやり直す"):
         for key in list(st.session_state.keys()):
             if key.startswith('jp_'): del st.session_state[key]
         st.rerun()
 else:
     st.info(f"分類: {st.session_state.jp_q_cat}")
-    st.subheader(f"{st.session_state.jp_q_txt}")
+    st.subheader(f"問題: {st.session_state.jp_q_txt}")
     
+    # 回答用フォーム
     with st.form(key='jp_answer_form'):
-        user_choice = st.radio("正しい答えを選んでください", st.session_state.jp_q_opts, index=None)
+        user_choice = st.radio("答えを選んでください", st.session_state.jp_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
 
         if submitted:
             if user_choice:
                 st.session_state.jp_answered = True
+                
                 if user_choice == st.session_state.jp_q_ans:
-                    st.success("⭕ 正解！")
+                    st.session_state.jp_is_correct = True
                     if st.session_state.jp_current_id in st.session_state.jp_remaining_ids:
                         st.session_state.jp_remaining_ids.remove(st.session_state.jp_current_id)
                     if st.session_state.jp_current_id in st.session_state.jp_wrong_pool:
                         st.session_state.jp_wrong_pool.remove(st.session_state.jp_current_id)
                 else:
-                    st.error(f"❌ 残念！正解は「{st.session_state.jp_q_ans}」でした。")
+                    st.session_state.jp_is_correct = False
                     if st.session_state.jp_current_id not in st.session_state.jp_wrong_pool:
                         st.session_state.jp_wrong_pool.append(st.session_state.jp_current_id)
                 st.rerun()
             else:
                 st.warning("選択肢を選んでください。")
 
+    # 回答後のメッセージ表示（リラン後にここが読み込まれる）
     if st.session_state.jp_answered:
+        if st.session_state.jp_is_correct:
+            st.success(f"⭕ 正解！ 「{st.session_state.jp_q_ans}」")
+        else:
+            st.error(f"❌ 残念！ 正解は 「{st.session_state.jp_q_ans}」 でした。")
+        
         if st.button("次の問題へ"):
             generate_next_question()
             st.rerun()

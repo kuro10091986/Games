@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # ページ設定
-st.set_page_config(page_title="小学校社会：高度学習モード", layout="centered", page_icon="🗾")
+st.set_page_config(page_title="小学校社会：高度学習モード v2", layout="centered", page_icon="🗾")
 
 # === 【全50問】社会科クイズデータベース ===
 SOCIAL_QUIZ_DATA = [
@@ -62,41 +62,34 @@ SOCIAL_QUIZ_DATA = [
     {"question": "国民が裁判に参加し、有罪か無罪かを判断する制度を何といいますか？", "answer": "裁判員制度", "distractors": ["陪審制", "司法試験", "検察制度"]},
     {"question": "核兵器を「もたない、つくらない、もちこませない」という原則を何といいますか？", "answer": "非核三原則", "distractors": ["核拡散防止", "平和条約", "安全保障"]},
     {"question": "世界の平和と安全を守るために1945年に発足した国際組織は何ですか？", "answer": "国際連合", "distractors": ["国際連盟", "EU", "NATO"]},
-    {"question": "開発と環境のバランスをとり、未来に豊かな生活を残せる社会を何といいますか？", "answer": "持続可能な社会（SDGs関連）", "distractors": ["高度経済成長", "情報化社会", "格差社会"]}
+    {"question": "開発と環境のバランスをとり、未来に豊かな生活を残せる社会を何といいますか？", "answer": "持続可能な社会（SDGs関連）", "distractors": ["高度経済成長", "情報化社会", "格さ社会"]}
 ]
 
 # --- 状態管理の初期化 ---
 if 'soc_remaining_ids' not in st.session_state:
     st.session_state.update({
-        'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))), # まだ正解していない問題
-        'soc_wrong_pool': [],      # 間違えた問題（復習用）
-        'soc_step_counter': 0,     # 出題数カウンター
-        'soc_next_interval': random.randint(3, 5), # 次に復習を出すタイミング
+        'soc_remaining_ids': list(range(len(SOCIAL_QUIZ_DATA))),
+        'soc_wrong_pool': [],      
+        'soc_step_counter': 0,     
+        'soc_next_interval': random.randint(3, 5),
         'soc_current_id': -1,
-        'soc_answered': False
+        'soc_answered': False,
+        'soc_is_correct': False # 追加：正誤判定の結果を保持
     })
 
 def generate_next_question():
-    """高度な出題アルゴリズム"""
     st.session_state.soc_step_counter += 1
-    
-    # 復習を出すタイミングかどうか判定
     is_review_time = (st.session_state.soc_wrong_pool and 
                       st.session_state.soc_step_counter >= st.session_state.soc_next_interval)
 
     if is_review_time:
-        # 復習用プールからランダムに選択
         quiz_id = random.choice(st.session_state.soc_wrong_pool)
-        # 次のインターバルを設定（現在から3〜5問後）
         st.session_state.soc_next_interval = st.session_state.soc_step_counter + random.randint(3, 5)
     elif st.session_state.soc_remaining_ids:
-        # 新規問題から選択
         quiz_id = random.choice(st.session_state.soc_remaining_ids)
     elif st.session_state.soc_wrong_pool:
-        # 新規が尽きたら、残った復習を出す
         quiz_id = random.choice(st.session_state.soc_wrong_pool)
     else:
-        # 全問終了
         st.session_state.soc_current_id = -99
         return
 
@@ -112,12 +105,11 @@ def generate_next_question():
         'soc_answered': False
     })
 
-# 初回起動
 if st.session_state.soc_current_id == -1:
     generate_next_question()
 
-st.title("🗾 社会科：高度学習モード")
-st.caption("目の前の一問に集中！間違えた問題は、忘れた頃に再登場します。")
+st.title("🗾 社会科：高度学習モード v2")
+st.caption("目の前の一問に集中！正誤判定は回答後にしっかり表示されます。")
 
 if st.session_state.soc_current_id == -99:
     st.balloons()
@@ -129,6 +121,7 @@ if st.session_state.soc_current_id == -99:
 else:
     st.subheader(f"問題: {st.session_state.soc_q_txt}")
     
+    # 【修正箇所】回答前のフォーム表示
     with st.form(key='soc_answer_form'):
         user_choice = st.radio("答えを選んでください", st.session_state.soc_q_opts, index=None)
         submitted = st.form_submit_button("回答する")
@@ -137,23 +130,29 @@ else:
             if user_choice:
                 st.session_state.soc_answered = True
                 
+                # 正誤判定の結果をセッションに保存（即表示せず、リラン後に表示させる）
                 if user_choice == st.session_state.soc_q_ans:
-                    st.success("⭕ 正解！")
-                    # 正解したら「未正解リスト」からも「復習リスト」からも完全に削除
+                    st.session_state.soc_is_correct = True
                     if st.session_state.soc_current_id in st.session_state.soc_remaining_ids:
                         st.session_state.soc_remaining_ids.remove(st.session_state.soc_current_id)
                     if st.session_state.soc_current_id in st.session_state.soc_wrong_pool:
                         st.session_state.soc_wrong_pool.remove(st.session_state.soc_current_id)
                 else:
-                    st.error(f"❌ 残念！正解は「{st.session_state.soc_q_ans}」でした。")
-                    # 間違えたら「復習リスト」にストック
+                    st.session_state.soc_is_correct = False
                     if st.session_state.soc_current_id not in st.session_state.soc_wrong_pool:
                         st.session_state.soc_wrong_pool.append(st.session_state.soc_current_id)
-                st.rerun()
+                
+                st.rerun() # ここで画面を更新
             else:
                 st.warning("選択肢を選んでください。")
 
+    # 【修正箇所】リラン後、回答済みの場合にメッセージと「次の問題へ」を表示
     if st.session_state.soc_answered:
+        if st.session_state.soc_is_correct:
+            st.success(f"⭕ 正解！ 「{st.session_state.soc_q_ans}」でした。")
+        else:
+            st.error(f"❌ 残念！ 正解は 「{st.session_state.soc_q_ans}」 でした。")
+        
         if st.button("次の問題へ"):
             generate_next_question()
             st.rerun()
