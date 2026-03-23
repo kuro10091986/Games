@@ -4,6 +4,21 @@ import random
 # --- ページ設定 ---
 st.set_page_config(page_title="5教科総合：高度学習ポータル", layout="centered", page_icon="🏫")
 
+# --- 2. UIのカスタマイズ（猫のマークやメニューを隠す） ---
+st.markdown("""
+    <style>
+    /* 右上のメニューボタンとGitHubアイコンを非表示にする */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* ついでに、画面上部の余白を少し詰めてスマートにする（お好みで） */
+    .block-container {
+        padding-top: 2rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # ==========================================
 # 1. データベース定義（全教科・全問題 網羅）
 # ==========================================
