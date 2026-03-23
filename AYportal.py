@@ -441,7 +441,7 @@ if 'study_states' not in st.session_state:
 # 5. 【修正：メイン画面上部】教科選択プルダウン
 # ==========================================
 # サイドバーではなく、メイン画面最上部に配置
-st.title("紋子専用小学校の復習")
+st.title("🐶😽 紋子専用小学校の復習")
 sel_subj = st.selectbox("学習する教科を選んでください", list(DATABASE.keys()))
 
 # ==========================================
@@ -452,7 +452,7 @@ def generate_q(subj):
     db = DATABASE[subj]
     s["step"] += 1
     
-    is_rv 😽😽
+    is_rv = (s["wrong_pool"] and s["step"] >= s["next_rv"])
     if is_rv:
         idx = random.choice(s["wrong_pool"])
         s["next_rv"] = s["step"] + random.randint(3, 5)
